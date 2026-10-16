@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthTrack Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.2s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .nav-link { @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer; }
+    .nav-link.active { @apply bg-indigo-50 text-indigo-700; }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans">
+
+<!-- ══ LOGIN ══════════════════════════════════════════════════════════════ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-100">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="text-4xl mb-2">🏥</div>
+      <h1 class="text-2xl font-bold text-gray-900">HealthTrack</h1>
+      <p class="text-sm text-gray-500 mt-1">Sistema de seguimiento de salud</p>
+    </div>
+
+    <div id="login-error" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input id="login-email" type="email" required placeholder="usuario@ejemplo.com"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+        <input id="login-password" type="password" required placeholder="••••••••"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <button type="submit"
+        class="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors">
+        Iniciar Sesión
+      </button>
+    </form>
+
+    <div class="mt-6">
+      <p class="text-xs text-center text-gray-400 mb-3">— Login rápido para demo —</p>
+      <div class="grid grid-cols-3 gap-2">
+        <button onclick="quickLogin('admin@healthtrack.com','Admin123!')"
+          class="text-xs bg-violet-50 text-violet-700 border border-violet-200 rounded-lg py-2 px-1 hover:bg-violet-100 transition-colors">
+          👤 Admin
+        </button>
+        <button onclick="quickLogin('elena.martinez@healthtrack.com','Doctor123!')"
+          class="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg py-2 px-1 hover:bg-emerald-100 transition-colors">
+          👩‍⚕️ Dra. Martínez
+        </button>
+        <button onclick="quickLogin('carlos.ruiz@email.com','Patient123!')"
+          class="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-lg py-2 px-1 hover:bg-blue-100 transition-colors">
+          🙋 Carlos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ══════════════════════════════════════════════════════════ -->
+<div id="app" class="hidden flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+    <div class="p-4 border-b border-gray-100">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🏥</span>
+        <span class="font-bold text-gray-900 text-lg">HealthTrack</span>
+      </div>
+    </div>
+
+    <div class="p-4 border-b border-gray-100">
+      <p id="sidebar-name" class="font-semibold text-gray-800 text-sm truncate"></p>
+      <span id="sidebar-role" class="inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium"></span>
+    </div>
+
+    <nav class="flex-1 p-3 space-y-1">
+      <div class="nav-link active" onclick="showSection('dashboard')" id="nav-dashboard">
+        <span>🏠</span><span>Dashboard</span>
+      </div>
+      <div class="nav-link" onclick="showSection('patients')" id="nav-patients" id="nav-patients-item">
+        <span>👥</span><span>Patients</span>
+      </div>
+      <div class="nav-link" onclick="showSection('appointments')" id="nav-appointments">
+        <span>📅</span><span>Appointments</span>
+      </div>
+      <div class="nav-link" onclick="showSection('metrics')" id="nav-metrics">
+        <span>📊</span><span>Health Metrics</span>
+      </div>
+      <div class="nav-link" onclick="showSection('notifications')" id="nav-notifications">
+        <span>🔔</span>
+        <span>Notifications</span>
+        <span id="notif-badge" class="hidden ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center"></span>
+      </div>
+    </nav>
+
+    <div class="p-3 border-t border-gray-100">
+      <button onclick="logout()"
+        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors">
+        <span>🚪</span><span>Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-y-auto">
+
+    <!-- ── DASHBOARD ───────────────────────────────────────── -->
+    <section id="section-dashboard" class="p-6 fade-in">
+      <h2 class="text-xl font-bold text-gray-900 mb-6">Dashboard</h2>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">👥</span>
+            <span class="text-xs text-gray-400 font-medium">Pacientes</span>
+          </div>
+          <p id="stat-patients" class="text-3xl font-bold text-indigo-600">—</p>
+          <p class="text-xs text-gray-500 mt-1">Total registrados</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">📅</span>
+            <span class="text-xs text-gray-400 font-medium">Hoy</span>
+          </div>
+          <p id="stat-today" class="text-3xl font-bold text-emerald-600">—</p>
+          <p class="text-xs text-gray-500 mt-1">Citas de hoy</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">🔔</span>
+            <span class="text-xs text-gray-400 font-medium">Alertas</span>
+          </div>
+          <p id="stat-alerts" class="text-3xl font-bold text-amber-500">—</p>
+          <p class="text-xs text-gray-500 mt-1">Sin leer</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-2xl">📊</span>
+            <span class="text-xs text-gray-400 font-medium">Métricas</span>
+          </div>
+          <p id="stat-metrics" class="text-3xl font-bold text-violet-600">—</p>
+          <p class="text-xs text-gray-500 mt-1">Esta semana</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 class="font-semibold text-gray-800 mb-4">Próximas citas</h3>
+          <div id="upcoming-appts" class="space-y-2 text-sm text-gray-500">Cargando...</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 class="font-semibold text-gray-800 mb-4">Alertas recientes</h3>
+          <div id="recent-alerts" class="space-y-2 text-sm text-gray-500">Cargando...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PATIENTS ────────────────────────────────────────── -->
+    <section id="section-patients" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-900">Patients</h2>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div id="patients-table-container" class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Paciente</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Edad</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Sangre</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Doctor</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Alergias</th>
+                  <th class="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody id="patients-tbody" class="divide-y divide-gray-50">
+                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Patient detail panel -->
+        <div id="patient-detail" class="hidden w-80 bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex-shrink-0 self-start">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-800">Detalle</h3>
+            <button onclick="closePatientDetail()" class="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+          </div>
+          <div id="patient-detail-content"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── APPOINTMENTS ────────────────────────────────────── -->
+    <section id="section-appointments" class="hidden p-6 fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-900">Appointments</h2>
+        <button id="btn-new-appt" onclick="openNewApptModal()"
+          class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors hidden">
+          + Nueva Cita
+        </button>
+      </div>
+
+      <div class="flex gap-2 mb-4">
+        <button onclick="filterAppts('all')" id="filter-all"
+          class="appt-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white">All</button>
+        <button onclick="filterAppts('scheduled')" id="filter-scheduled"
+          class="appt-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Scheduled</button>
+        <button onclick="filterAppts('confirmed')" id="filter-confirmed"
+          class="appt-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Confirmed</button>
+        <button onclick="filterAppts('completed')" id="filter-completed"
+          class="appt-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Completed</button>
+        <button onclick="filterAppts('cancelled')" id="filter-cancelled"
+          class="appt-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Cancelled</button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Paciente</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Doctor</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Motivo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Duración</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="appts-tbody" class="divide-y divide-gray-50">
+            <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── METRICS ─────────────────────────────────────────── -->
+    <section id="section-metrics" class="hidden p-6 fade-in">
+      <h2 class="text-xl font-bold text-gray-900 mb-6">Health Metrics</h2>
+
+      <div class="flex items-center gap-4 mb-4">
+        <div>
+          <label class="text-xs font-medium text-gray-500 mb-1 block">Paciente</label>
+          <select id="metric-patient-select" onchange="loadMetrics()"
+            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">Seleccionar paciente...</option>
+          </select>
+        </div>
+        <div class="mt-5">
+          <button onclick="openNewMetricModal()"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+            + Registrar Métrica
+          </button>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <button onclick="selectMetricType('blood_pressure')" data-type="blood_pressure"
+          class="metric-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white">Blood Pressure</button>
+        <button onclick="selectMetricType('glucose')" data-type="glucose"
+          class="metric-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Glucose</button>
+        <button onclick="selectMetricType('weight')" data-type="weight"
+          class="metric-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Weight</button>
+        <button onclick="selectMetricType('heart_rate')" data-type="heart_rate"
+          class="metric-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Heart Rate</button>
+        <button onclick="selectMetricType('temperature')" data-type="temperature"
+          class="metric-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Temperature</button>
+        <button onclick="selectMetricType('oxygen_saturation')" data-type="oxygen_saturation"
+          class="metric-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">O₂ Sat</button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4">
+        <div class="relative h-64">
+          <canvas id="metricsChart"></canvas>
+          <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+            Selecciona un paciente para ver las métricas
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-3 mb-4" id="metric-stats">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+          <p class="text-xs text-gray-400 mb-1">Promedio</p>
+          <p id="stat-avg" class="text-xl font-bold text-gray-800">—</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+          <p class="text-xs text-gray-400 mb-1">Mínimo</p>
+          <p id="stat-min" class="text-xl font-bold text-gray-800">—</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+          <p class="text-xs text-gray-400 mb-1">Máximo</p>
+          <p id="stat-max" class="text-xl font-bold text-gray-800">—</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+          <p class="text-xs text-gray-400 mb-1">Tendencia</p>
+          <p id="stat-trend" class="text-xl font-bold text-gray-800">—</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Registrado por</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Notas</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="metrics-tbody" class="divide-y divide-gray-50">
+            <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">Selecciona un paciente</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── NOTIFICATIONS ──────────────────────────────────── -->
+    <section id="section-notifications" class="hidden p-6 fade-in">
+      <h2 class="text-xl font-bold text-gray-900 mb-6">Notifications</h2>
+
+      <div class="flex gap-2 mb-4">
+        <button onclick="filterNotifs('all')" id="nf-all"
+          class="notif-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white">All</button>
+        <button onclick="filterNotifs('unread')" id="nf-unread"
+          class="notif-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Unread</button>
+        <button onclick="filterNotifs('critical')" id="nf-critical"
+          class="notif-filter px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">Critical only</button>
+      </div>
+
+      <div id="notifications-list" class="space-y-3">
+        <div class="text-center text-gray-400 py-8 text-sm">Cargando...</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══ MODAL: NUEVA CITA ══════════════════════════════════════════════════ -->
+<div id="modal-appt" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-semibold text-gray-900">Nueva Cita</h3>
+      <button onclick="closeModal('modal-appt')" class="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+    </div>
+    <form id="form-appt" onsubmit="submitNewAppt(event)" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Paciente</label>
+        <select id="appt-patient" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">Seleccionar...</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha y hora</label>
+        <input id="appt-datetime" type="datetime-local" required
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Duración (min)</label>
+        <input id="appt-duration" type="number" value="30" min="5" max="480"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+        <input id="appt-reason" type="text" placeholder="Ej: Control tensión arterial"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('modal-appt')"
+          class="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancelar</button>
+        <button type="submit"
+          class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Crear cita</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ MODAL: NUEVA MÉTRICA ═══════════════════════════════════════════════ -->
+<div id="modal-metric" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-semibold text-gray-900">Registrar Métrica</h3>
+      <button onclick="closeModal('modal-metric')" class="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+    </div>
+    <form id="form-metric" onsubmit="submitNewMetric(event)" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de métrica</label>
+        <select id="metric-type-input" required onchange="updateMetricUnit()"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="blood_pressure">Presión arterial</option>
+          <option value="glucose">Glucosa</option>
+          <option value="weight">Peso</option>
+          <option value="heart_rate">Frecuencia cardíaca</option>
+          <option value="temperature">Temperatura</option>
+          <option value="oxygen_saturation">Saturación O₂</option>
+        </select>
+      </div>
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Valor <span id="metric-unit-label" class="text-gray-400">(mmHg)</span></label>
+          <input id="metric-value" type="number" step="0.1" required
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div id="secondary-value-container" class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Diastólica (mmHg)</label>
+          <input id="metric-secondary" type="number" step="0.1"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha y hora</label>
+        <input id="metric-datetime" type="datetime-local" required
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+        <input id="metric-notes" type="text" placeholder="Observaciones..."
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div id="metric-error" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('modal-metric')"
+          class="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancelar</button>
+        <button type="submit"
+          class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ══ ESTADO GLOBAL ══════════════════════════════════════════════════════════
+let currentUser = null;
+let currentSection = 'dashboard';
+let allAppointments = [];
+let allNotifications = [];
+let allPatients = [];
+let chartInstance = null;
+let selectedMetricType = 'blood_pressure';
+
+// ══ UTILS ══════════════════════════════════════════════════════════════════
+const TOKEN_KEY = 'healthtrack_token';
+const USER_KEY = 'healthtrack_user';
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+async function apiFetch(url, opts = {}) {
+  const token = getToken();
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) { logout(); return null; }
+  return res;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDateShort(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+}
+
+function calcAge(dob) {
+  if (!dob) return '—';
+  return Math.floor((Date.now() - new Date(dob)) / 31557600000);
+}
+
+function statusBadge(status) {
+  const map = {
+    scheduled: 'bg-blue-100 text-blue-800',
+    confirmed: 'bg-emerald-100 text-emerald-800',
+    completed: 'bg-gray-100 text-gray-700',
+    cancelled: 'bg-red-100 text-red-700',
+  };
+  return `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || 'bg-gray-100 text-gray-600'}">${status}</span>`;
+}
+
+function severityIcon(sev) {
+  return sev === 'critical' ? '🔴' : sev === 'warning' ? '🟡' : '🔵';
+}
+
+function metricStatusBadge(status) {
+  const map = { normal: 'bg-emerald-100 text-emerald-800', warning: 'bg-amber-100 text-amber-800', critical: 'bg-red-100 text-red-800' };
+  return `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || 'bg-gray-100 text-gray-600'}">${status}</span>`;
+}
+
+function metricStatusFromValue(type, value) {
+  const ranges = {
+    blood_pressure: { normal: [90, 120], warning: [80, 140] },
+    glucose: { normal: [70, 100], warning: [54, 125] },
+    heart_rate: { normal: [60, 100], warning: [50, 120] },
+    temperature: { normal: [36.1, 37.2], warning: [35.5, 38.0] },
+    oxygen_saturation: { normal: [95, 100], warning: [90, 100] },
+  };
+  const r = ranges[type];
+  if (!r) return 'normal';
+  if (value >= r.normal[0] && value <= r.normal[1]) return 'normal';
+  if (value >= r.warning[0] && value <= r.warning[1]) return 'warning';
+  return 'critical';
+}
+
+const METRIC_UNITS = {
+  blood_pressure: 'mmHg', glucose: 'mg/dL', weight: 'kg',
+  heart_rate: 'bpm', temperature: '°C', oxygen_saturation: '%'
+};
+
+// ══ AUTH ═══════════════════════════════════════════════════════════════════
+function quickLogin(email, password) {
+  document.getElementById('login-email').value = email;
+  document.getElementById('login-password').value = password;
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const errDiv = document.getElementById('login-error');
+  errDiv.classList.add('hidden');
+
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    errDiv.textContent = data.error || 'Error al iniciar sesión';
+    errDiv.classList.remove('hidden');
+    return;
+  }
+
+  localStorage.setItem(TOKEN_KEY, data.token);
+  localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  currentUser = data.user;
+  initApp();
+});
+
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  currentUser = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+// ══ APP INIT ══════════════════════════════════════════════════════════════
+function initApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+
+  // Configurar sidebar con usuario
+  document.getElementById('sidebar-name').textContent = currentUser.name;
+  const roleEl = document.getElementById('sidebar-role');
+  const roleColors = { admin: 'bg-violet-100 text-violet-800', doctor: 'bg-emerald-100 text-emerald-800', patient: 'bg-blue-100 text-blue-800' };
+  roleEl.className = `inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[currentUser.role] || 'bg-gray-100 text-gray-700'}`;
+  roleEl.textContent = currentUser.role;
+
+  // Mostrar botón "Nueva Cita" si es doctor o admin
+  if (currentUser.role !== 'patient') {
+    document.getElementById('btn-new-appt').classList.remove('hidden');
+  }
+
+  showSection('dashboard');
+  updateUnreadBadge();
+}
+
+// ══ NAVEGACIÓN ════════════════════════════════════════════════════════════
+function showSection(name) {
+  const sections = ['dashboard', 'patients', 'appointments', 'metrics', 'notifications'];
+  sections.forEach(s => {
+    document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
+    document.getElementById(`nav-${s}`)?.classList.toggle('active', s === name);
+  });
+  currentSection = name;
+
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'patients') loadPatients();
+  else if (name === 'appointments') loadAppointments();
+  else if (name === 'metrics') loadMetricsSection();
+  else if (name === 'notifications') loadNotifications();
+}
+
+// ══ DASHBOARD ════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  const [pRes, aRes, nRes] = await Promise.all([
+    apiFetch('/api/patients'),
+    apiFetch('/api/appointments'),
+    apiFetch('/api/notifications'),
+  ]);
+
+  const patients = pRes?.ok ? (await pRes.json()).data : [];
+  const appointments = aRes?.ok ? (await aRes.json()).data : [];
+  const notifications = nRes?.ok ? (await nRes.json()).data : [];
+
+  document.getElementById('stat-patients').textContent = patients.length;
+
+  const today = new Date().toDateString();
+  const todayAppts = appointments.filter(a => new Date(a.date_time).toDateString() === today && a.status !== 'cancelled');
+  document.getElementById('stat-today').textContent = todayAppts.length;
+
+  const unread = notifications.filter(n => !n.read);
+  document.getElementById('stat-alerts').textContent = unread.length;
+
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  // We'd need metrics endpoint per patient — just show notification count for now
+  document.getElementById('stat-metrics').textContent = notifications.filter(n => n.type !== 'appointment_reminder').length;
+
+  // Próximas citas
+  const upcoming = appointments
+    .filter(a => new Date(a.date_time) > new Date() && a.status !== 'cancelled')
+    .sort((a, b) => new Date(a.date_time) - new Date(b.date_time))
+    .slice(0, 5);
+
+  const upEl = document.getElementById('upcoming-appts');
+  if (!upcoming.length) {
+    upEl.innerHTML = '<p class="text-gray-400">No hay citas próximas</p>';
+  } else {
+    upEl.innerHTML = upcoming.map(a => `
+      <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+        <div>
+          <p class="font-medium text-gray-800 text-xs">${a.patient_name || '—'}</p>
+          <p class="text-gray-400 text-xs">${fmtDate(a.date_time)}</p>
+        </div>
+        ${statusBadge(a.status)}
+      </div>
+    `).join('');
+  }
+
+  // Alertas recientes
+  const critWarn = notifications
+    .filter(n => n.severity !== 'info')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5);
+
+  const alertEl = document.getElementById('recent-alerts');
+  if (!critWarn.length) {
+    alertEl.innerHTML = '<p class="text-gray-400">Sin alertas recientes</p>';
+  } else {
+    alertEl.innerHTML = critWarn.map(n => `
+      <div class="flex items-start gap-2 py-2 border-b border-gray-50 last:border-0">
+        <span class="text-sm mt-0.5">${severityIcon(n.severity)}</span>
+        <div>
+          <p class="font-medium text-gray-800 text-xs">${n.title}</p>
+          <p class="text-gray-400 text-xs">${n.patient_name || ''} · ${fmtDate(n.created_at)}</p>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// ══ PATIENTS ═════════════════════════════════════════════════════════════
+async function loadPatients() {
+  const res = await apiFetch('/api/patients');
+  if (!res?.ok) return;
+  const { data } = await res.json();
+  allPatients = data;
+  renderPatientsTable(data);
+}
+
+function renderPatientsTable(patients) {
+  const tbody = document.getElementById('patients-tbody');
+  if (!patients.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">No hay pacientes</td></tr>';
+    return;
+  }
+  tbody.innerHTML = patients.map((p, i) => {
+    let allergies = [];
+    try { allergies = JSON.parse(p.allergies || '[]'); } catch {}
+    const allergyBadges = allergies.length
+      ? allergies.map(a => `<span class="inline-block bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded mr-1">${a}</span>`).join('')
+      : '<span class="text-gray-400 text-xs">Ninguna</span>';
+    return `
+      <tr class="${i % 2 === 1 ? 'bg-gray-50/50' : ''} hover:bg-indigo-50/30 transition-colors cursor-pointer" onclick="showPatientDetail(${p.id})">
+        <td class="px-4 py-3">
+          <p class="font-medium text-gray-800">${p.name || '—'}</p>
+          <p class="text-xs text-gray-400">${p.email || ''}</p>
+        </td>
+        <td class="px-4 py-3 text-gray-600">${calcAge(p.date_of_birth)} años</td>
+        <td class="px-4 py-3">
+          <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded">${p.blood_type || '—'}</span>
+        </td>
+        <td class="px-4 py-3 text-gray-600 text-xs">${p.doctor_name || '—'}</td>
+        <td class="px-4 py-3">${allergyBadges}</td>
+        <td class="px-4 py-3">
+          <button onclick="event.stopPropagation(); showPatientDetail(${p.id})"
+            class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Ver →</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function showPatientDetail(patientId) {
+  const res = await apiFetch(`/api/patients/${patientId}`);
+  if (!res?.ok) return;
+  const { data: p } = await res.json();
+
+  let allergies = [];
+  try { allergies = JSON.parse(p.allergies || '[]'); } catch {}
+
+  document.getElementById('patient-detail-content').innerHTML = `
+    <div class="space-y-3 text-sm">
+      <div>
+        <p class="text-xs text-gray-400">Nombre</p>
+        <p class="font-medium text-gray-800">${p.name || '—'}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <p class="text-xs text-gray-400">Fecha nac.</p>
+          <p class="text-gray-700">${p.date_of_birth || '—'}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400">Género</p>
+          <p class="text-gray-700 capitalize">${p.gender || '—'}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400">Tipo sangre</p>
+          <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-medium rounded">${p.blood_type || '—'}</span>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400">Edad</p>
+          <p class="text-gray-700">${calcAge(p.date_of_birth)} años</p>
+        </div>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 mb-1">Alergias</p>
+        ${allergies.length
+          ? allergies.map(a => `<span class="inline-block bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded mr-1 mb-1">${a}</span>`).join('')
+          : '<span class="text-gray-400 text-xs">Sin alergias conocidas</span>'}
+      </div>
+      <div>
+        <p class="text-xs text-gray-400">Doctor asignado</p>
+        <p class="text-gray-700">${p.doctor_name || '—'}</p>
+      </div>
+      ${p.emergency_contact ? `
+      <div>
+        <p class="text-xs text-gray-400">Contacto emergencia</p>
+        <p class="text-gray-700">${p.emergency_contact} · ${p.emergency_phone || ''}</p>
+      </div>` : ''}
+      <button onclick="goToPatientMetrics(${p.id})"
+        class="w-full mt-2 bg-indigo-600 text-white py-2 rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors">
+        📊 Ver Métricas
+      </button>
+    </div>
+  `;
+  document.getElementById('patient-detail').classList.remove('hidden');
+}
+
+function closePatientDetail() {
+  document.getElementById('patient-detail').classList.add('hidden');
+}
+
+function goToPatientMetrics(patientId) {
+  showSection('metrics');
+  // Seleccionar paciente en el dropdown
+  setTimeout(() => {
+    const sel = document.getElementById('metric-patient-select');
+    if (sel) { sel.value = patientId; loadMetrics(); }
+  }, 300);
+}
+
+// ══ APPOINTMENTS ══════════════════════════════════════════════════════════
+let apptFilter = 'all';
+
+async function loadAppointments() {
+  const res = await apiFetch('/api/appointments');
+  if (!res?.ok) return;
+  const { data } = await res.json();
+  allAppointments = data;
+  renderAppointments();
+}
+
+function filterAppts(status) {
+  apptFilter = status;
+  document.querySelectorAll('.appt-filter').forEach(b => {
+    const isActive = b.id === `filter-${status}`;
+    b.className = `appt-filter px-3 py-1.5 rounded-lg text-xs font-medium ${isActive ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`;
+  });
+  renderAppointments();
+}
+
+function renderAppointments() {
+  const filtered = apptFilter === 'all' ? allAppointments : allAppointments.filter(a => a.status === apptFilter);
+  const tbody = document.getElementById('appts-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">No hay citas</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map((a, i) => `
+    <tr class="${i % 2 === 1 ? 'bg-gray-50/50' : ''} hover:bg-indigo-50/30 transition-colors">
+      <td class="px-4 py-3 text-xs text-gray-600">${fmtDate(a.date_time)}</td>
+      <td class="px-4 py-3 font-medium text-gray-800 text-sm">${a.patient_name || '—'}</td>
+      <td class="px-4 py-3 text-xs text-gray-600">${a.doctor_name || '—'}</td>
+      <td class="px-4 py-3 text-xs text-gray-600">${a.reason || '—'}</td>
+      <td class="px-4 py-3 text-xs text-gray-600">${a.duration_minutes} min</td>
+      <td class="px-4 py-3">${statusBadge(a.status)}</td>
+    </tr>
+  `).join('');
+}
+
+async function openNewApptModal() {
+  // Cargar pacientes en el select
+  const res = await apiFetch('/api/patients');
+  if (!res?.ok) return;
+  const { data } = await res.json();
+  const sel = document.getElementById('appt-patient');
+  sel.innerHTML = '<option value="">Seleccionar...</option>' +
+    data.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('modal-appt').classList.remove('hidden');
+}
+
+async function submitNewAppt(e) {
+  e.preventDefault();
+  const patientId = document.getElementById('appt-patient').value;
+  const dt = document.getElementById('appt-datetime').value;
+  const duration = document.getElementById('appt-duration').value;
+  const reason = document.getElementById('appt-reason').value;
+
+  const res = await apiFetch('/api/appointments', {
+    method: 'POST',
+    body: JSON.stringify({
+      patient_id: parseInt(patientId),
+      doctor_id: currentUser.id,
+      date_time: dt,
+      duration_minutes: parseInt(duration),
+      reason: reason || undefined,
+    }),
+  });
+
+  if (res?.ok) {
+    closeModal('modal-appt');
+    loadAppointments();
+  }
+}
+
+// ══ METRICS ═══════════════════════════════════════════════════════════════
+async function loadMetricsSection() {
+  const res = await apiFetch('/api/patients');
+  if (!res?.ok) return;
+  const { data } = await res.json();
+  allPatients = data;
+
+  const sel = document.getElementById('metric-patient-select');
+  sel.innerHTML = '<option value="">Seleccionar paciente...</option>' +
+    data.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+  // Si solo hay un paciente (rol patient), seleccionar automáticamente
+  if (data.length === 1) {
+    sel.value = data[0].id;
+    loadMetrics();
+  }
+}
+
+function selectMetricType(type) {
+  selectedMetricType = type;
+  document.querySelectorAll('.metric-tab').forEach(b => {
+    const isActive = b.dataset.type === type;
+    b.className = `metric-tab px-3 py-1.5 rounded-lg text-xs font-medium ${isActive ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`;
+  });
+  loadMetrics();
+}
+
+async function loadMetrics() {
+  const patientId = document.getElementById('metric-patient-select').value;
+  if (!patientId) return;
+
+  const [mRes, sRes] = await Promise.all([
+    apiFetch(`/api/health-metrics/${patientId}?type=${selectedMetricType}`),
+    apiFetch(`/api/health-metrics/${patientId}/summary`),
+  ]);
+
+  const metrics = mRes?.ok ? (await mRes.json()).data : [];
+  const summary = sRes?.ok ? (await sRes.json()).data : [];
+
+  // Stats
+  const sumEntry = summary.find(s => s.metric_type === selectedMetricType);
+  document.getElementById('stat-avg').textContent = sumEntry ? `${sumEntry.avg_value} ${METRIC_UNITS[selectedMetricType]}` : '—';
+  document.getElementById('stat-min').textContent = sumEntry ? `${sumEntry.min_value}` : '—';
+  document.getElementById('stat-max').textContent = sumEntry ? `${sumEntry.max_value}` : '—';
+  const trendMap = { rising: '↑ Subiendo', falling: '↓ Bajando', stable: '→ Estable' };
+  document.getElementById('stat-trend').textContent = sumEntry ? (trendMap[sumEntry.trend] || sumEntry.trend) : '—';
+
+  // Chart
+  const placeholder = document.getElementById('chart-placeholder');
+  if (!metrics.length) {
+    placeholder.classList.remove('hidden');
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    return;
+  }
+  placeholder.classList.add('hidden');
+
+  const sorted = [...metrics].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+  const labels = sorted.map(m => fmtDateShort(m.recorded_at));
+  const values = sorted.map(m => m.value);
+  const secValues = sorted.map(m => m.secondary_value);
+
+  const datasets = [{
+    label: selectedMetricType === 'blood_pressure' ? 'Sistólica (mmHg)' : `${selectedMetricType.replace(/_/g,' ')} (${METRIC_UNITS[selectedMetricType]})`,
+    data: values,
+    borderColor: 'rgb(99, 102, 241)',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    tension: 0.3,
+    fill: true,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+  }];
+
+  if (selectedMetricType === 'blood_pressure' && secValues.some(v => v !== null)) {
+    datasets.push({
+      label: 'Diastólica (mmHg)',
+      data: secValues,
+      borderColor: 'rgb(20, 184, 166)',
+      backgroundColor: 'rgba(20, 184, 166, 0.05)',
+      tension: 0.3,
+      fill: false,
+      pointRadius: 4,
+      borderDash: [4, 2],
+    });
+  }
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('metricsChart'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: datasets.length > 1 },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} ${METRIC_UNITS[selectedMetricType]}`,
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+
+  // Tabla de lecturas
+  const tbody = document.getElementById('metrics-tbody');
+  tbody.innerHTML = metrics.slice(0, 20).map((m, i) => {
+    const status = metricStatusFromValue(m.metric_type, m.value);
+    const rowClass = status === 'critical' ? 'bg-red-50' : status === 'warning' ? 'bg-amber-50' : i % 2 === 1 ? 'bg-gray-50/50' : '';
+    const displayVal = m.secondary_value != null
+      ? `${m.value}/${m.secondary_value} ${m.unit}`
+      : `${m.value} ${m.unit}`;
+    return `
+      <tr class="${rowClass} hover:bg-indigo-50/30 transition-colors">
+        <td class="px-4 py-3 text-xs text-gray-600">${fmtDate(m.recorded_at)}</td>
+        <td class="px-4 py-3 font-medium text-gray-800">${displayVal}</td>
+        <td class="px-4 py-3 text-xs text-gray-500">${m.recorded_by_name || '—'}</td>
+        <td class="px-4 py-3 text-xs text-gray-500">${m.notes || '—'}</td>
+        <td class="px-4 py-3">${metricStatusBadge(status)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openNewMetricModal() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('metric-datetime').value = now.toISOString().slice(0, 16);
+  document.getElementById('metric-error').classList.add('hidden');
+  updateMetricUnit();
+  document.getElementById('modal-metric').classList.remove('hidden');
+}
+
+function updateMetricUnit() {
+  const type = document.getElementById('metric-type-input').value;
+  document.getElementById('metric-unit-label').textContent = `(${METRIC_UNITS[type] || ''})`;
+  const secContainer = document.getElementById('secondary-value-container');
+  secContainer.style.display = type === 'blood_pressure' ? '' : 'none';
+}
+
+async function submitNewMetric(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('metric-error');
+  errEl.classList.add('hidden');
+
+  const patientId = document.getElementById('metric-patient-select').value;
+  if (!patientId) { errEl.textContent = 'Selecciona un paciente primero'; errEl.classList.remove('hidden'); return; }
+
+  const type = document.getElementById('metric-type-input').value;
+  const value = parseFloat(document.getElementById('metric-value').value);
+  const secondary = document.getElementById('metric-secondary').value;
+  const dt = document.getElementById('metric-datetime').value;
+  const notes = document.getElementById('metric-notes').value;
+
+  const body = {
+    patient_id: parseInt(patientId),
+    metric_type: type,
+    value,
+    unit: METRIC_UNITS[type],
+    recorded_at: dt,
+    notes: notes || undefined,
+  };
+  if (type === 'blood_pressure' && secondary) body.secondary_value = parseFloat(secondary);
+
+  const res = await apiFetch('/api/health-metrics', { method: 'POST', body: JSON.stringify(body) });
+  if (res?.ok) {
+    closeModal('modal-metric');
+    loadMetrics();
+    updateUnreadBadge();
+  } else {
+    const data = await res?.json();
+    errEl.textContent = data?.error || 'Error al registrar';
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ══ NOTIFICATIONS ══════════════════════════════════════════════════════════
+let notifFilter = 'all';
+
+async function loadNotifications() {
+  const res = await apiFetch('/api/notifications');
+  if (!res?.ok) return;
+  const { data } = await res.json();
+  allNotifications = data;
+  renderNotifications();
+}
+
+function filterNotifs(filter) {
+  notifFilter = filter;
+  ['all', 'unread', 'critical'].forEach(f => {
+    const btn = document.getElementById(`nf-${f}`);
+    const isActive = f === filter;
+    btn.className = `notif-filter px-3 py-1.5 rounded-lg text-xs font-medium ${isActive ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`;
+  });
+  renderNotifications();
+}
+
+function renderNotifications() {
+  let filtered = allNotifications;
+  if (notifFilter === 'unread') filtered = filtered.filter(n => !n.read);
+  if (notifFilter === 'critical') filtered = filtered.filter(n => n.severity === 'critical');
+
+  const container = document.getElementById('notifications-list');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="text-center text-gray-400 py-8 text-sm">No hay notificaciones</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(n => {
+    const sevColors = {
+      critical: 'border-l-4 border-red-400 bg-red-50',
+      warning: 'border-l-4 border-amber-400 bg-amber-50',
+      info: 'border-l-4 border-blue-400 bg-blue-50',
+    };
+    const unreadDot = !n.read ? '<span class="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0 mt-1.5"></span>' : '';
+    return `
+      <div class="bg-white rounded-xl shadow-sm ${sevColors[n.severity] || ''} p-4 cursor-pointer hover:shadow-md transition-shadow ${n.read ? 'opacity-70' : ''}"
+           onclick="markNotifRead(${n.id})">
+        <div class="flex items-start gap-3">
+          <span class="text-lg mt-0.5">${severityIcon(n.severity)}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <p class="font-semibold text-gray-800 text-sm">${n.title}</p>
+              ${unreadDot}
+            </div>
+            <p class="text-gray-600 text-xs mt-0.5">${n.message}</p>
+            <div class="flex items-center gap-2 mt-1.5">
+              ${n.patient_name ? `<span class="text-xs text-gray-400">👤 ${n.patient_name}</span>` : ''}
+              <span class="text-xs text-gray-400">· ${fmtDate(n.created_at)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function markNotifRead(id) {
+  const notif = allNotifications.find(n => n.id === id);
+  if (!notif || notif.read) return;
+  const res = await apiFetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
+  if (res?.ok) {
+    notif.read = 1;
+    renderNotifications();
+    updateUnreadBadge();
+  }
+}
+
+async function updateUnreadBadge() {
+  const res = await apiFetch('/api/notifications/unread-count');
+  if (!res?.ok) return;
+  const { count } = await res.json();
+  const badge = document.getElementById('notif-badge');
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+// ══ MODALES ═══════════════════════════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+// Cerrar modal al click en overlay
+document.querySelectorAll('[id^="modal-"]').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.add('hidden');
+  });
+});
+
+// ══ INICIALIZACIÓN ════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const token = getToken();
+  const userStr = localStorage.getItem(USER_KEY);
+  if (token && userStr) {
+    try {
+      currentUser = JSON.parse(userStr);
+      initApp();
+    } catch {
+      logout();
+    }
+  }
+});
+</script>
+</body>
+</html>
