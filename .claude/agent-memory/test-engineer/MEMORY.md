@@ -1,0 +1,1 @@
+- [Entorno de tests HealthTrack](project_test_env.md) — shim crypto Node 16, helper HTTP, it.fails para bugs, trampas conocidas

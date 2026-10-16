@@ -1,0 +1,1 @@
+- [Ubicación de la documentación](project_docs-location.md) — docs/API.md es la referencia única; README enlaza a ella

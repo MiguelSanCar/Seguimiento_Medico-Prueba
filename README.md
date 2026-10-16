@@ -39,6 +39,7 @@ PUT    /api/patients/:id
 DELETE /api/patients/:id
 
 GET    /api/appointments
+GET    /api/appointments/:id
 POST   /api/appointments
 PUT    /api/appointments/:id
 DELETE /api/appointments/:id
@@ -50,10 +51,13 @@ POST   /api/health-metrics
 GET    /api/notifications
 GET    /api/notifications/unread-count
 PATCH  /api/notifications/:id/read
+
+GET    /api/health            (sin auth)
 ```
 
-Todas las rutas (excepto auth) requieren `Authorization: Bearer <token>`.
+Todas las rutas (excepto auth y `GET /api/health`) requieren `Authorization: Bearer <token>`.
 
+Referencia completa (roles, body/query, respuestas y códigos HTTP): [docs/API.md](docs/API.md).
 ## Scripts
 
 ```bash

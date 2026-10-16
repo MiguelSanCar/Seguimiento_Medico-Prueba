@@ -1,6 +1,6 @@
 # HealthTrack API — Guía para Claude Code
 
-Este proyecto es el proyecto troncal del **Módulo 8 del curso de Claude Code**. Los alumnos crearán subagentes especializados para analizar, testear, documentar y mejorar este sistema.
+API REST de seguimiento médico (pacientes, citas, métricas de salud y notificaciones) con dashboard web incluido. Proyecto personal.
 
 ---
 
@@ -149,19 +149,12 @@ Los servicios lanzan `Error` con mensaje descriptivo. Las rutas capturan y devue
 
 SQLite con `better-sqlite3`. El archivo es `healthtrack.db` en la raíz del proyecto (configurable con la variable de entorno `DB_PATH`).
 
-Las queries son SQL directo (sin ORM) para facilitar el análisis por subagentes especializados en bases de datos.
+Las queries son SQL directo (sin ORM) para facilitar su análisis y optimización.
 
 El singleton de conexión está en `src/database/connection.ts`. Para tests se usa una DB en memoria mediante `setDb()`.
 
 ---
 
-## Nota para el curso
+## Deuda técnica
 
-> Este proyecto es el proyecto troncal del **Módulo 8 del curso de Claude Code**. Los alumnos crearán subagentes especializados para trabajar con él:
-> - **security-auditor**: encontrará vulnerabilidades de seguridad en el código
-> - **test-writer**: añadirá cobertura de tests a los módulos
-> - **db-analyst**: analizará y optimizará las queries SQL
-> - **doc-generator**: generará documentación de la API
-> - **code-reviewer**: revisará calidad y deuda técnica
-
-Los comentarios `// DEBT:` y `// FIXME:` en el código marcan áreas de mejora intencionalmente dejadas para los ejercicios del curso.
+Los comentarios `// DEBT:` y `// FIXME:` en el código marcan áreas de mejora pendientes.
