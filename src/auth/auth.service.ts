@@ -52,10 +52,9 @@ function generateToken(user: User): string {
     role: user.role,
     name: user.name,
   };
-  // DEBT: config.jwtSecret debería venir de process.env.JWT_SECRET (ver config.ts)
-  return jwt.sign(payload, config.jwtSecret, { expiresIn: '24h' });
+  return jwt.sign(payload, config.jwtSecret, { algorithm: 'HS256', expiresIn: '24h' });
 }
 
 export function verifyToken(token: string): TokenPayload {
-  return jwt.verify(token, config.jwtSecret) as TokenPayload;
+  return jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as TokenPayload;
 }

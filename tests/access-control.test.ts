@@ -130,7 +130,7 @@ describe('API /api/auth', () => {
     expect(ok.body.user.password_hash).toBeUndefined();
     expect((await request(app, 'POST', '/api/auth/register', { body })).status).toBe(409);
     expect((await request(app, 'POST', '/api/auth/register', { body: { ...body, name: '' } })).status).toBe(400);
-    expect((await request(app, 'POST', '/api/auth/register', { body: { ...body, email: 'z@t.com', role: 'superuser' } })).status).toBe(400);
+    expect((await request(app, 'POST', '/api/auth/register', { body: { ...body, email: 'z@t.com', role: 'superuser' } })).status).toBe(403);
   });
 
   it('login: 200, 401 password incorrecta, 401 usuario inexistente (mismo mensaje), 400 vacio', async () => {
@@ -158,11 +158,25 @@ describe('API /api/auth', () => {
     expect(r.status).not.toBe(201);
   });
 
-  // BUG (escalada de privilegios): auth.routes.ts:15-19 permite auto-registrarse como admin sin autenticacion
-  it.fails('register: no deberia permitir auto-registro con rol admin', async () => {
+  it('register: no permite auto-registro con rol admin', async () => {
     const r = await request(app, 'POST', '/api/auth/register', {
       body: { email: 'evil@t.com', password: 'Abc12345!', name: 'Evil', role: 'admin' },
     });
     expect(r.status).toBe(403);
+  });
+
+  it('register: no permite auto-registro con rol doctor', async () => {
+    const r = await request(app, 'POST', '/api/auth/register', {
+      body: { email: 'doc@t.com', password: 'Abc12345!', name: 'Doc', role: 'doctor' },
+    });
+    expect(r.status).toBe(403);
+  });
+
+  it('register: sin rol crea un paciente', async () => {
+    const r = await request(app, 'POST', '/api/auth/register', {
+      body: { email: 'pac@t.com', password: 'Abc12345!', name: 'Pac' },
+    });
+    expect(r.status).toBe(201);
+    expect(r.body.user.role).toBe('patient');
   });
 });
