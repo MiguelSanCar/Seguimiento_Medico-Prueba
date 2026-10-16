@@ -52,6 +52,10 @@ src/
 │   ├── notifications.routes.ts
 │   ├── notifications.service.ts
 │   └── notifications.types.ts
+├── alerts/                  # Alertas por métricas anómalas (reconocibles)
+│   ├── alerts.routes.ts     # GET /api/alerts/:patientId, PATCH /api/alerts/:id/acknowledge
+│   ├── alerts.service.ts    # createAlert(), canAccessPatient(), getAlertsByPatient(), acknowledgeAlert()
+│   └── alerts.types.ts      # Alert, AlertSeverity, CreateAlertDTO, AlertFilters
 ├── middleware/
 │   ├── error-handler.ts     # Error handler global Express
 │   ├── audit-logger.ts      # Logging de mutaciones para compliance
@@ -64,9 +68,18 @@ public/
 └── index.html               # Dashboard SPA (Tailwind + Chart.js + Vanilla JS)
 tests/
 ├── setup.ts                 # DB en memoria para tests, helpers createTestUser()
+├── http-helper.ts           # Helper para peticiones HTTP en los tests de API
 ├── auth.test.ts             # Tests de autenticación
-└── patients.test.ts         # Tests de pacientes
+├── patients.test.ts         # Tests de pacientes
+├── appointments.test.ts     # Tests de citas
+├── metrics.test.ts          # Tests de métricas
+├── alerts.test.ts           # Tests de alertas
+├── middleware.test.ts       # Tests de middlewares
+├── access-control.test.ts   # Tests de control de acceso por rol
+└── metrics-notifications-api.test.ts # Tests de API de métricas y notificaciones
 ```
+
+Nota Node 16: los tests necesitan un shim de crypto; ejecútalos con `NODE_OPTIONS="--require ./tests/node16-crypto-shim.cjs"`.
 
 ---
 

@@ -77,33 +77,43 @@ describe('API /api/health-metrics', () => {
     expect(r.body.error).toBeTruthy();
   });
 
-  // BUG (IDOR, grave): metrics.routes.ts:8-19 y 22-31 no comprueban propiedad: cualquier usuario autenticado lee metricas de cualquier paciente
-  it.fails('GET: un paciente no deberia ver metricas de otro paciente', async () => {
+  // Control de acceso: 404 sin distinguir paciente inexistente de sin acceso
+  it('GET: un paciente no ve metricas de otro paciente (404)', async () => {
     const w = world();
     createMetric(body(w.patB) as any, w.docB);
     const r = await request(app, 'GET', `/api/health-metrics/${w.patB}`, { token: w.tPatA });
-    expect(r.status).toBe(403);
+    expect(r.status).toBe(404);
   });
-  it.fails('GET: un doctor no deberia ver metricas de pacientes de otro doctor', async () => {
+  it('GET: un doctor no ve metricas de pacientes de otro doctor (404)', async () => {
     const w = world();
     createMetric(body(w.patB) as any, w.docB);
     const r = await request(app, 'GET', `/api/health-metrics/${w.patB}`, { token: w.tDocA });
-    expect(r.status).toBe(403);
+    expect(r.status).toBe(404);
   });
-  it.fails('GET summary: un paciente no deberia ver el resumen de otro paciente', async () => {
+  it('GET summary: un paciente no ve el resumen de otro paciente (404)', async () => {
     const w = world();
     createMetric(body(w.patB) as any, w.docB);
     const r = await request(app, 'GET', `/api/health-metrics/${w.patB}/summary`, { token: w.tPatA });
-    expect(r.status).toBe(403);
+    expect(r.status).toBe(404);
   });
-  // BUG: POST sin authorize(): un paciente puede registrar metricas en cualquier paciente
-  it.fails('POST: un paciente no deberia registrar metricas en otro paciente', async () => {
+  it('POST: un paciente no registra metricas en otro paciente (404) y no se crea nada', async () => {
     const w = world();
     const r = await request(app, 'POST', '/api/health-metrics', { token: w.tPatA, body: body(w.patB) });
-    expect(r.status).toBe(403);
+    expect(r.status).toBe(404);
+    const n = await request(app, 'GET', `/api/health-metrics/${w.patB}`, { token: w.tAdmin });
+    expect(n.body.count).toBe(0);
   });
-  // BUG: FK invalida -> 500 en lugar de 404
-  it.fails('POST: paciente inexistente deberia devolver 404', async () => {
+  it('POST: un paciente si puede registrar sus propias metricas', async () => {
+    const w = world();
+    const r = await request(app, 'POST', '/api/health-metrics', { token: w.tPatA, body: body(w.patA) });
+    expect(r.status).toBe(201);
+  });
+  it('POST: un doctor no registra metricas en pacientes de otro doctor (404)', async () => {
+    const w = world();
+    const r = await request(app, 'POST', '/api/health-metrics', { token: w.tDocA, body: body(w.patB) });
+    expect(r.status).toBe(404);
+  });
+  it('POST: paciente inexistente devuelve 404', async () => {
     const w = world();
     const r = await request(app, 'POST', '/api/health-metrics', { token: w.tDocA, body: body(9999) });
     expect(r.status).toBe(404);

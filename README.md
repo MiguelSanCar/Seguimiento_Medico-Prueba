@@ -22,7 +22,7 @@ Abre http://localhost:3000 — el dashboard ya tiene datos de ejemplo cargados.
 - **Runtime**: Node.js + TypeScript
 - **Framework**: Express
 - **Base de datos**: SQLite con better-sqlite3
-- **Auth**: JWT + bcrypt
+- **Auth**: JWT + bcrypt. Define `JWT_SECRET` (mín. 32 caracteres; obligatoria en producción). Sin ella, en desarrollo se usa un secreto aleatorio temporal
 - **Tests**: Vitest
 - **Frontend**: HTML + Tailwind CSS + Chart.js (sin build step)
 
@@ -51,6 +51,9 @@ POST   /api/health-metrics
 GET    /api/notifications
 GET    /api/notifications/unread-count
 PATCH  /api/notifications/:id/read
+
+GET    /api/alerts/:patientId           (filtros: ?severity=warning|critical&acknowledged=true|false)
+PATCH  /api/alerts/:id/acknowledge
 
 GET    /api/health            (sin auth)
 ```

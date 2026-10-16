@@ -1,6 +1,7 @@
 import { getDb } from '../database/connection';
 import type { HealthMetric, CreateMetricDTO, MetricSummary, MetricType, MetricRange } from './metrics.types';
 import { createNotification } from '../notifications/notifications.service';
+import { createAlert } from '../alerts/alerts.service';
 
 // Rangos normales de métricas de salud
 const METRIC_RANGES: Partial<Record<MetricType, MetricRange>> = {
@@ -129,46 +130,86 @@ export function getPatientSummary(patientId: number): MetricSummary[] {
 export function createMetric(dto: CreateMetricDTO, recordedByUserId: number): HealthMetric {
   const db = getDb();
 
-  const result = db.prepare(`
-    INSERT INTO health_metrics (patient_id, metric_type, value, secondary_value, unit, recorded_at, recorded_by, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    dto.patient_id,
-    dto.metric_type,
-    dto.value,
-    dto.secondary_value ?? null,
-    dto.unit,
-    dto.recorded_at,
-    recordedByUserId,
-    dto.notes ?? null
-  );
+  // Métrica + alerta + notificación en una sola transacción: o se guarda todo o nada.
+  const run = db.transaction((): HealthMetric => {
+    const result = db.prepare(`
+      INSERT INTO health_metrics (patient_id, metric_type, value, secondary_value, unit, recorded_at, recorded_by, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      dto.patient_id,
+      dto.metric_type,
+      dto.value,
+      dto.secondary_value ?? null,
+      dto.unit,
+      dto.recorded_at,
+      recordedByUserId,
+      dto.notes ?? null
+    );
 
-  const metricId = result.lastInsertRowid as number;
-  const metric = db.prepare(`
-    SELECT hm.*, u.name as recorded_by_name
-    FROM health_metrics hm
-    LEFT JOIN users u ON hm.recorded_by = u.id
-    WHERE hm.id = ?
-  `).get(metricId) as HealthMetric;
+    const metricId = result.lastInsertRowid as number;
+    const metric = db.prepare(`
+      SELECT hm.*, u.name as recorded_by_name
+      FROM health_metrics hm
+      LEFT JOIN users u ON hm.recorded_by = u.id
+      WHERE hm.id = ?
+    `).get(metricId) as HealthMetric;
 
-  // Generar notificación automática si hay anomalía
-  const status = checkMetricStatus(dto.metric_type, dto.value);
-  if (status === 'warning' || status === 'critical') {
-    const metricLabel = dto.metric_type.replace(/_/g, ' ');
-    const severityLabel = status === 'critical' ? 'crítico' : 'advertencia';
+    // Generar alerta y notificación automáticas si hay anomalía
+    const { status, triggerValue } = evaluateMetric(dto);
+    if (status === 'warning' || status === 'critical') {
+      const metricLabel = dto.metric_type.replace(/_/g, ' ');
+      const severityLabel = status === 'critical' ? 'crítico' : 'advertencia';
 
-    // DEBT: El mensaje de notificación no incluye el valor que disparó la alerta,
-    // solo describe el tipo. Debería decir "Glucosa: 145 mg/dL (crítico)" en vez de
-    // solo "Nivel de glucosa fuera de rango".
-    createNotification({
-      patient_id: dto.patient_id,
-      type: status === 'critical' ? 'metric_critical' : 'metric_warning',
-      title: `${metricLabel} ${severityLabel}`,
-      message: `Nivel de ${metricLabel} fuera de rango normal`,
-      severity: status,
-      related_metric_id: metricId,
-    });
+      createAlert({
+        patient_id: dto.patient_id,
+        metric_id: metricId,
+        metric_type: dto.metric_type,
+        value: triggerValue,
+        severity: status,
+      });
+
+      // DEBT: El mensaje de notificación no incluye el valor que disparó la alerta,
+      // solo describe el tipo. Debería decir "Glucosa: 145 mg/dL (crítico)" en vez de
+      // solo "Nivel de glucosa fuera de rango".
+      createNotification({
+        patient_id: dto.patient_id,
+        type: status === 'critical' ? 'metric_critical' : 'metric_warning',
+        title: `${metricLabel} ${severityLabel}`,
+        message: `Nivel de ${metricLabel} fuera de rango normal`,
+        severity: status,
+        related_metric_id: metricId,
+      });
+    }
+
+    return metric;
+  });
+
+  return run();
+}
+
+const SEVERITY_RANK = { normal: 0, warning: 1, critical: 2 } as const;
+
+// Diastólica (solo blood_pressure): normal 60-80, warning 81-90 / <60, critical >90 / <50
+export function checkDiastolicStatus(value: number): 'normal' | 'warning' | 'critical' {
+  if (value >= 60 && value <= 80) return 'normal';
+  if (value > 90 || value < 50) return 'critical';
+  return 'warning';
+}
+
+// Peor severidad entre el valor principal y, en presión arterial, la diastólica.
+function evaluateMetric(dto: CreateMetricDTO): { status: 'normal' | 'warning' | 'critical'; triggerValue: number } {
+  let status = checkMetricStatus(dto.metric_type, dto.value);
+  let triggerValue = dto.value;
+
+  if (dto.metric_type === 'blood_pressure' && dto.secondary_value != null) {
+    const secondary = Number(dto.secondary_value);
+    if (!Number.isNaN(secondary)) {
+      const diastolic = checkDiastolicStatus(secondary);
+      if (SEVERITY_RANK[diastolic] > SEVERITY_RANK[status]) {
+        status = diastolic;
+        triggerValue = secondary;
+      }
+    }
   }
-
-  return metric;
+  return { status, triggerValue };
 }

@@ -1,1 +1,2 @@
 - [Ubicación de la documentación](project_docs-location.md) — docs/API.md es la referencia única; README enlaza a ella
+- [Línea base health-metrics](project_health-metrics-baseline.md) — docs/health-metrics-baseline.md, snapshot congelado previo a cambios

@@ -61,6 +61,22 @@ export function runMigrations(db: Database.Database): void {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER NOT NULL REFERENCES patients(id),
+      metric_id INTEGER NOT NULL REFERENCES health_metrics(id),
+      metric_type TEXT NOT NULL,
+      value REAL NOT NULL,
+      severity TEXT NOT NULL CHECK(severity IN ('warning','critical')),
+      created_at TEXT DEFAULT (datetime('now')),
+      acknowledged INTEGER NOT NULL DEFAULT 0 CHECK(acknowledged IN (0,1)),
+      acknowledged_by INTEGER REFERENCES users(id),
+      acknowledged_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_alerts_patient_id ON alerts(patient_id);
+    CREATE INDEX IF NOT EXISTS idx_alerts_patient_ack ON alerts(patient_id, acknowledged);
+
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER,

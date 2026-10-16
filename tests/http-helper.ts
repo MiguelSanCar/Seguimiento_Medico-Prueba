@@ -10,6 +10,7 @@ import patientsRoutes from '../src/patients/patients.routes';
 import appointmentsRoutes from '../src/appointments/appointments.routes';
 import metricsRoutes from '../src/health-metrics/metrics.routes';
 import notificationsRoutes from '../src/notifications/notifications.routes';
+import alertsRoutes from '../src/alerts/alerts.routes';
 import type { TokenPayload } from '../src/auth/auth.types';
 
 // src/index.ts hace app.listen() al importarse, asi que se monta una app equivalente
@@ -23,6 +24,7 @@ export function buildApp(): express.Express {
   app.use('/api/appointments', appointmentsRoutes);
   app.use('/api/health-metrics', metricsRoutes);
   app.use('/api/notifications', notificationsRoutes);
+  app.use('/api/alerts', alertsRoutes);
   app.use(errorHandler);
   return app;
 }

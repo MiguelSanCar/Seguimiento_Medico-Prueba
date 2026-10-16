@@ -160,8 +160,7 @@ describe('createMetric y notificaciones', () => {
     expect(() => createMetric(mk(9999, 'glucose', 90, '2024-01-01T10:00'), doctor)).toThrow();
   });
 
-  // BUG: la diastolica (secondary_value) nunca se evalua (metrics.service.ts, createMetric usa solo dto.value)
-  it.fails('deberia alertar por diastolica critica (115/95)', () => {
+  it('deberia alertar por diastolica critica (115/95)', () => {
     const { doctor, patientId } = setup();
     createMetric(mk(patientId, 'blood_pressure', 115, '2024-01-01T10:00', 95), doctor);
     expect(getNotificationsForUser(asDoctor(doctor))).toHaveLength(1);

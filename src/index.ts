@@ -11,6 +11,7 @@ import patientsRoutes from './patients/patients.routes';
 import appointmentsRoutes from './appointments/appointments.routes';
 import metricsRoutes from './health-metrics/metrics.routes';
 import notificationsRoutes from './notifications/notifications.routes';
+import alertsRoutes from './alerts/alerts.routes';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/patients', patientsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/health-metrics', metricsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/alerts', alertsRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
